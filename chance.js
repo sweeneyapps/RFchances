@@ -1,67 +1,70 @@
 
-var workers = [];
 var sortedWorkers = [];
 var working = [];
 var jobs = [];
-var yourChance;
+var genID = 0;
+var timer;
+var running = false;
+var jobPerSec = 10;
+var maxStep = 30;
+var allJobCount = {};
 
 function createWorker() {
 
     var newScore = Math.random() * 100;
 
     return {
+        id: genID++,
         score: newScore,
-        working: false,
         job: null,
+        jobCount: 0,
+        standing: null,
+        working: false,
         yourself: false
     }
 }
 
 function createJob() {
-
-    var newStep = Math.floor(Math.random() * 20) + 1;
+    var newStep = Math.floor(Math.random() * maxStep) + 1;
     return {
-        steps: newStep
-    }
-}
-
-function create50Jobs() {
-    for (var i = 0; i < 50; i++) {
-        jobs.push(createJob());
-    }
-}
-
-function create100Workers() {
-    for (var i = 0; i < 100; i++) {
-        workers.push(createWorker());
+        step: newStep
     }
 }
 
 function addYourself() {
     var worker = createWorker();
     worker.yourself = true;
-    workers.push(worker);
+    sortedWorkers.push(worker);
     sortWorkers();
     render();
-}
-
-function findYourRating() {
-    var index = sortedWorkers.findIndex(function(el) {
-        return el.yourself;
-    });
-
-    if (index == -1) {
-        return "You are Working!";
-    }
-
-    var yourRating = sortedWorkers.length - index;
-    return `Will be assigned at next ${yourRating} job(s)`;
 }
 
 function addWorker() {
-    workers.push(createWorker());
+    sortedWorkers.push(createWorker());
     sortWorkers();
     render();
+}
+
+function add100Workers() {
+    for (var i = 0; i < 100; i++) {
+        sortedWorkers.push(createWorker());
+    }
+    sortWorkers();
+    render();
+}
+
+function removeWorker() {
+    var index = Math.floor(Math.random() * sortedWorkers.length);
+
+    if (sortedWorkers[index].yourself) {
+        if (sortedWorkers.length == 1) {
+            return;
+        }
+        removeWorker(); // that's you! don't remove urself!
+    } else {
+        sortedWorkers.splice(index, 1);
+        render();
+    }
 }
 
 function addJob() {
@@ -69,8 +72,15 @@ function addJob() {
     render();
 }
 
+function add100Jobs() {
+    for(var i = 0; i < 100; i++){
+        jobs.push(createJob());
+    }
+    render();
+}
+
 function sortWorkers() {
-    sortedWorkers = workers.sort(function(a,b) {
+    sortedWorkers = sortedWorkers.sort(function(a,b) {
         return a.score - b.score;
     });
 }
@@ -79,8 +89,9 @@ function assignJob() {
     if ( jobs.length == 0) return; // no job
     if ( sortedWorkers.length == 0) return; // no more worker
     var worker = sortedWorkers.pop();
-    worker.working = true;
     worker.job = jobs.pop();
+    worker.jobCount += 1;
+    worker.working = true;
     working.push(worker);
     render();
 }
@@ -92,14 +103,24 @@ function assignAllJobs() {
     }
 }
 
+function autoAssignJob(num) {
+    for(var i = 0; i < num; i++) {
+        jobs.push(createJob());
+    }
+    assignAllJobs();
+}
+
 function reset() {
-    workers = [];
     sortedWorkers = [];
     working = [];
     jobs = [];
 
     addYourself();  // You are always online
     render();
+}
+
+function updateJobPerSec(event){
+    jobPerSec = event.target.value;
 }
 
 function getData() {
@@ -113,15 +134,48 @@ function getData() {
     }
 }
 
-function renderData() {
+function findYourSelf() {
+    var index = sortedWorkers.findIndex(function(worker) {
+        return worker.yourself;
+    });
 
+    if (index == -1) {
+        return working.find(function(worker){
+            return worker.yourself;
+        });
+    }
+
+    var worker = sortedWorkers[index];
+    worker.standing = sortedWorkers.length - index;
+    return worker;
+}
+
+function renderYourJobCount() {
+    var worker = findYourSelf();
+    var jobCount = worker.jobCount;
+
+    return `Your Job Count: ${jobCount}`;
+}
+
+function renderYourChance() {
+    var worker = findYourSelf();
+
+    if (worker.working) {
+        return "You are Working!";
+    }
+
+    var yourRating = worker.standing;
+    return `You will be assigned at next ${yourRating} job(s)`;
+}
+
+function renderData() {
     var data = getData();
     return `Job Available: ${data.jobs} | Worker Online: ${data.workers} | Working: ${data.working}`
 }
 
 function renderStat() {
     var data = getData();
-    var chance = findYourRating();
+    var chance = renderYourChance();
     var percent = Math.floor((data.working / data.workers) * 100);
     if (isNaN(percent)) {
         percent = 0;
@@ -129,24 +183,69 @@ function renderStat() {
     return `Your Chance: ${chance} | Percent of Workers working: ${percent}%`;
 }
 
+function renderOverall() {
+    var allJobCount = {};
+    var html = "";
+
+    var allWorkers = sortedWorkers.concat(working);
+    for (var i = 0; i < allWorkers.length; i++) {
+        var worker = allWorkers[i];
+        var jobCount = worker.jobCount;
+        if (allJobCount[jobCount] == null) {
+            allJobCount[jobCount] = 0;
+        }
+        
+        allJobCount[jobCount] += 1;
+    }
+
+    for (key in allJobCount) {
+        var count = allJobCount[key];
+        html += `<div style="text-align: right; width:30px; display:inline-block">${key}:</div><div class="graphBar" style="display: inline-block; color:blue; background-color:green; width:${count}px;">&nbsp;</div><br/>`;
+    }
+
+
+    return html;
+}
+
 function render() {
-       document.getElementById('jobinfo').innerHTML = renderData();
-       document.getElementById('stat').innerHTML = renderStat();
+    document.getElementById('jobinfo').innerHTML = renderData();
+    document.getElementById('stat').innerHTML = renderStat();
+    document.getElementById('jobCount').innerHTML = renderYourJobCount();
+    document.getElementById('overall').innerHTML = renderOverall();
+}
+
+function loop() {
+
+    autoAssignJob(jobPerSec);
+
+    for (var i = 0; i < working.length; i++) {
+        var worker = working[i];
+        var step = --worker.job.step;
+        if (step == 0) {
+            working.splice(i, 1);
+            worker.working = false;
+            sortedWorkers.push(worker);
+        }
+    }
+    sortWorkers();
+    render();
+    console.log('loop');
+}
+
+function start() {
+    if (running) return;
+    timer = setInterval(loop, 1000);
+    running = true;
+}
+
+function stop() {
+    clearInterval(timer);
+    running = false;
 }
 
 function init() {
-    addJob();
-    addJob();
-    addJob();
-    addJob();
-    addJob(); // 5 jobs ready
-    addWorker();
-    addWorker();
-    addWorker(); // 3 workers ready
-
     addYourself(); // you just added yourself to the workforce.
-    render();
+    add100Workers();
 }
-
 
 document.addEventListener("DOMContentLoaded", init); 
