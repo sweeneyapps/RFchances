@@ -8,24 +8,23 @@
 
    <div id="jobinfo"></div>
 
-   <button onclick="addWorker();">Add Worker</button>
-   <button onclick="add100Workers();">Add 100 Workers</button>
-   <button onclick="removeWorker();">Remove Worker</button>
-   <button onclick="addJob();">Add Job</button>
-   <button onclick="add100Jobs();">Add 100 Jobs</button> 
-   <button onclick="assignJob();">Assign Job</button>
-   <button onclick="assignAllJobs();">Assign All Jobs</button>
-   <button onclick="reset();">Clear All</button>
+   <button onclick="addWorker(1);">Add Worker</button>
+   <button onclick="removeWorker(1);">Remove Worker</button>
+   <button onclick="addWorker(100);">Add 100 Workers</button>
+   <button onclick="removeWorker(100);">Remove 100 Workers</button>
+   <button onclick="clearAll();">Clear All</button>
 
    <br />
 
-   <input onchange="updateJobPerSec(event);" value="10"></input> job(s) assigned per second.
+   Flow of jobs: light <input type="range" min="1" max="100" step="1" onchange="updateJobPerSec(event);" value="10"></input> heavy
    <br />
 
    <button onclick="start();">Start</button>
    <button onclick="stop();">Stop</button>
 
    <hr>
+   <p>Your Trust Score: <span id="rating"></span> (trust scores are assigned 0-100 randomly) </p>
+   
    <div id="stat"></div>
 
    <br />
